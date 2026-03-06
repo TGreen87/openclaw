@@ -1,6 +1,9 @@
 import { hasConfiguredUnavailableCredentialStatus } from "../../channels/account-snapshot-fields.js";
 import { listChannelPlugins } from "../../channels/plugins/index.js";
-import { buildChannelAccountSnapshot } from "../../channels/plugins/status.js";
+import {
+  buildChannelAccountSnapshot,
+  buildReadOnlySourceChannelAccountSnapshot,
+} from "../../channels/plugins/status.js";
 import type { ChannelAccountSnapshot } from "../../channels/plugins/types.js";
 import { formatCliCommand } from "../../cli/command-format.js";
 import { resolveCommandSecretRefsViaGateway } from "../../cli/command-secret-gateway.js";
@@ -254,7 +257,7 @@ export async function formatConfigChannelsStatusLines(
     }
     const snapshots: ChannelAccountSnapshot[] = [];
     for (const accountId of accountIds) {
-      const sourceSnapshot = await buildChannelAccountSnapshot({
+      const sourceSnapshot = await buildReadOnlySourceChannelAccountSnapshot({
         plugin,
         cfg: sourceConfig,
         accountId,
@@ -265,7 +268,8 @@ export async function formatConfigChannelsStatusLines(
         accountId,
       });
       snapshots.push(
-        hasConfiguredUnavailableCredentialStatus(sourceSnapshot) &&
+        sourceSnapshot &&
+          hasConfiguredUnavailableCredentialStatus(sourceSnapshot) &&
           !hasResolvedCredentialValue(resolvedSnapshot)
           ? sourceSnapshot
           : resolvedSnapshot,

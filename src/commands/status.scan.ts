@@ -350,6 +350,7 @@ export async function scanStatus(
         // Show token previews in regular status; keep `status --all` redacted.
         // Set `CLAWDBOT_SHOW_SECRETS=0` to force redaction.
         showSecrets: process.env.CLAWDBOT_SHOW_SECRETS?.trim() !== "0",
+        sourceConfig: loadedRaw,
       });
       progress.tick();
 

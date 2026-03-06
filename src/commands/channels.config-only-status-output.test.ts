@@ -86,6 +86,42 @@ function makeResolvedTokenPlugin(): ChannelPlugin {
   };
 }
 
+function makeResolvedTokenPluginWithoutInspectAccount(): ChannelPlugin {
+  return {
+    id: "token-only",
+    meta: {
+      id: "token-only",
+      label: "TokenOnly",
+      selectionLabel: "TokenOnly",
+      docsPath: "/channels/token-only",
+      blurb: "test",
+    },
+    capabilities: { chatTypes: ["direct"] },
+    config: {
+      listAccountIds: () => ["primary"],
+      defaultAccountId: () => "primary",
+      resolveAccount: (cfg) => {
+        if (!(cfg as { secretResolved?: boolean }).secretResolved) {
+          throw new Error("raw SecretRef reached resolveAccount");
+        }
+        return {
+          name: "Primary",
+          enabled: true,
+          configured: true,
+          token: "resolved-token",
+          tokenSource: "config",
+          tokenStatus: "available",
+        };
+      },
+      isConfigured: () => true,
+      isEnabled: () => true,
+    },
+    actions: {
+      listActions: () => ["send"],
+    },
+  };
+}
+
 describe("config-only channels status output", () => {
   afterEach(() => {
     setActivePluginRegistry(createTestRegistry([]));
@@ -139,5 +175,33 @@ describe("config-only channels status output", () => {
     expect(joined).toContain("token:config");
     expect(joined).not.toContain("secret unavailable in this command path");
     expect(joined).not.toContain("token:config (unavailable)");
+  });
+
+  it("does not resolve raw source config for extension channels without inspectAccount", async () => {
+    setActivePluginRegistry(
+      createTestRegistry([
+        {
+          pluginId: "token-only",
+          source: "test",
+          plugin: makeResolvedTokenPluginWithoutInspectAccount(),
+        },
+      ]),
+    );
+
+    const lines = await formatConfigChannelsStatusLines(
+      { secretResolved: true, channels: {} } as never,
+      {
+        mode: "local",
+      },
+      {
+        sourceConfig: { channels: {} } as never,
+      },
+    );
+
+    const joined = lines.join("\n");
+    expect(joined).toContain("TokenOnly");
+    expect(joined).toContain("configured");
+    expect(joined).toContain("token:config");
+    expect(joined).not.toContain("secret unavailable in this command path");
   });
 });
