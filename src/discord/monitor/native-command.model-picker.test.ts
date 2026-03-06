@@ -266,8 +266,40 @@ describe("Discord model picker interactions", () => {
     await button.run(interaction as unknown as PickerButtonInteraction, data);
 
     expect(interaction.acknowledge).toHaveBeenCalledTimes(1);
+    expect(interaction.reply).not.toHaveBeenCalled();
     expect(interaction.update).not.toHaveBeenCalled();
     expect(loadSpy).not.toHaveBeenCalled();
+  });
+
+  it("acknowledges owner interactions before waiting on slow model picker data", async () => {
+    const context = createModelPickerContext();
+    let resolvePickerData: ((value: ModelsProviderData) => void) | undefined;
+    const pickerDataPromise = new Promise<ModelsProviderData>((resolve) => {
+      resolvePickerData = resolve;
+    });
+    vi.spyOn(modelPickerModule, "loadDiscordModelPickerData").mockReturnValue(pickerDataPromise);
+    const button = createDiscordModelPickerFallbackButton(context);
+    const interaction = createInteraction({ userId: "owner" });
+
+    const data: PickerButtonData = {
+      cmd: "model",
+      act: "back",
+      view: "providers",
+      u: "owner",
+      pg: "1",
+    };
+
+    const runPromise = button.run(interaction as unknown as PickerButtonInteraction, data);
+
+    await waitForCondition(() => interaction.acknowledge.mock.calls.length === 1);
+    expect(interaction.reply).not.toHaveBeenCalled();
+    expect(interaction.update).not.toHaveBeenCalled();
+
+    resolvePickerData?.(createDefaultModelPickerData());
+    await runPromise;
+
+    expect(interaction.reply).toHaveBeenCalledTimes(1);
+    expect(interaction.update).not.toHaveBeenCalled();
   });
 
   it("requires submit click before routing selected model through /model pipeline", async () => {
@@ -284,7 +316,9 @@ describe("Discord model picker interactions", () => {
 
     const selectInteraction = await runModelSelect({ context });
 
-    expect(selectInteraction.update).toHaveBeenCalledTimes(1);
+    expect(selectInteraction.acknowledge).toHaveBeenCalledTimes(1);
+    expect(selectInteraction.reply).toHaveBeenCalledTimes(1);
+    expect(selectInteraction.update).not.toHaveBeenCalled();
     expect(dispatchSpy).not.toHaveBeenCalled();
 
     const submitInteraction = await runSubmitButton({
@@ -292,7 +326,9 @@ describe("Discord model picker interactions", () => {
       data: createModelsViewSubmitData(),
     });
 
-    expect(submitInteraction.update).toHaveBeenCalledTimes(1);
+    expect(submitInteraction.acknowledge).toHaveBeenCalledTimes(1);
+    expect(submitInteraction.reply).toHaveBeenCalledTimes(1);
+    expect(submitInteraction.update).not.toHaveBeenCalled();
     expect(dispatchSpy).toHaveBeenCalledTimes(1);
     expectDispatchedModelSelection({
       dispatchSpy,
@@ -365,10 +401,12 @@ describe("Discord model picker interactions", () => {
 
     await button.run(interaction as unknown as PickerButtonInteraction, data);
 
-    expect(interaction.update).toHaveBeenCalledTimes(1);
-    const updatePayload = interaction.update.mock.calls[0]?.[0];
-    expect(updatePayload).toBeDefined();
-    expect(updatePayload.components).toBeDefined();
+    expect(interaction.acknowledge).toHaveBeenCalledTimes(1);
+    expect(interaction.reply).toHaveBeenCalledTimes(1);
+    expect(interaction.update).not.toHaveBeenCalled();
+    const replyPayload = interaction.reply.mock.calls[0]?.[0];
+    expect(replyPayload).toBeDefined();
+    expect(replyPayload.components).toBeDefined();
   });
 
   it("clicking recents model button applies model through /model pipeline", async () => {
@@ -400,7 +438,9 @@ describe("Discord model picker interactions", () => {
       },
     });
 
-    expect(submitInteraction.update).toHaveBeenCalledTimes(1);
+    expect(submitInteraction.acknowledge).toHaveBeenCalledTimes(1);
+    expect(submitInteraction.reply).toHaveBeenCalledTimes(1);
+    expect(submitInteraction.update).not.toHaveBeenCalled();
     expect(dispatchSpy).toHaveBeenCalledTimes(1);
     expectDispatchedModelSelection({ dispatchSpy, model: "openai/gpt-4o" });
   });

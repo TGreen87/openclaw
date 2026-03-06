@@ -637,6 +637,13 @@ async function handleDiscordModelPickerInteraction(
     return;
   }
 
+  const ackResult = await safeDiscordInteractionCall("model picker ack", () =>
+    interaction.acknowledge(),
+  );
+  if (ackResult === null) {
+    return;
+  }
+
   const pickerData = await loadDiscordModelPickerData(ctx.cfg);
   const route = await resolveDiscordModelPickerRoute({
     interaction,
@@ -673,8 +680,8 @@ async function handleDiscordModelPickerInteraction(
       providerPage: parsed.providerPage,
     });
 
-    await safeDiscordInteractionCall("model picker update", () =>
-      interaction.update(toDiscordModelPickerMessagePayload(rendered)),
+    await safeDiscordInteractionCall("model picker reply", () =>
+      interaction.reply(toDiscordModelPickerMessagePayload(rendered)),
     );
     return;
   }
@@ -688,8 +695,8 @@ async function handleDiscordModelPickerInteraction(
       currentModel: currentModelRef,
     });
 
-    await safeDiscordInteractionCall("model picker update", () =>
-      interaction.update(toDiscordModelPickerMessagePayload(rendered)),
+    await safeDiscordInteractionCall("model picker reply", () =>
+      interaction.reply(toDiscordModelPickerMessagePayload(rendered)),
     );
     return;
   }
@@ -711,8 +718,8 @@ async function handleDiscordModelPickerInteraction(
       quickModels,
     });
 
-    await safeDiscordInteractionCall("model picker update", () =>
-      interaction.update(toDiscordModelPickerMessagePayload(rendered)),
+    await safeDiscordInteractionCall("model picker reply", () =>
+      interaction.reply(toDiscordModelPickerMessagePayload(rendered)),
     );
     return;
   }
@@ -720,8 +727,8 @@ async function handleDiscordModelPickerInteraction(
   if (parsed.action === "provider") {
     const selectedProvider = resolveModelPickerSelectionValue(interaction) ?? parsed.provider;
     if (!selectedProvider || !pickerData.byProvider.has(selectedProvider)) {
-      await safeDiscordInteractionCall("model picker update", () =>
-        interaction.update(
+      await safeDiscordInteractionCall("model picker reply", () =>
+        interaction.reply(
           buildDiscordModelPickerNoticePayload("Sorry, that provider isn't available anymore."),
         ),
       );
@@ -739,8 +746,8 @@ async function handleDiscordModelPickerInteraction(
       quickModels,
     });
 
-    await safeDiscordInteractionCall("model picker update", () =>
-      interaction.update(toDiscordModelPickerMessagePayload(rendered)),
+    await safeDiscordInteractionCall("model picker reply", () =>
+      interaction.reply(toDiscordModelPickerMessagePayload(rendered)),
     );
     return;
   }
@@ -749,8 +756,8 @@ async function handleDiscordModelPickerInteraction(
     const selectedModel = resolveModelPickerSelectionValue(interaction);
     const provider = parsed.provider;
     if (!provider || !selectedModel) {
-      await safeDiscordInteractionCall("model picker update", () =>
-        interaction.update(
+      await safeDiscordInteractionCall("model picker reply", () =>
+        interaction.reply(
           buildDiscordModelPickerNoticePayload("Sorry, I couldn't read that model selection."),
         ),
       );
@@ -763,8 +770,8 @@ async function handleDiscordModelPickerInteraction(
       model: selectedModel,
     });
     if (!modelIndex) {
-      await safeDiscordInteractionCall("model picker update", () =>
-        interaction.update(
+      await safeDiscordInteractionCall("model picker reply", () =>
+        interaction.reply(
           buildDiscordModelPickerNoticePayload("Sorry, that model isn't available anymore."),
         ),
       );
@@ -785,8 +792,8 @@ async function handleDiscordModelPickerInteraction(
       quickModels,
     });
 
-    await safeDiscordInteractionCall("model picker update", () =>
-      interaction.update(toDiscordModelPickerMessagePayload(rendered)),
+    await safeDiscordInteractionCall("model picker reply", () =>
+      interaction.reply(toDiscordModelPickerMessagePayload(rendered)),
     );
     return;
   }
@@ -822,8 +829,8 @@ async function handleDiscordModelPickerInteraction(
       !parsedModelRef ||
       !pickerData.byProvider.get(parsedModelRef.provider)?.has(parsedModelRef.model)
     ) {
-      await safeDiscordInteractionCall("model picker update", () =>
-        interaction.update(
+      await safeDiscordInteractionCall("model picker reply", () =>
+        interaction.reply(
           buildDiscordModelPickerNoticePayload(
             "That selection expired. Please choose a model again.",
           ),
@@ -838,16 +845,16 @@ async function handleDiscordModelPickerInteraction(
       modelRef: resolvedModelRef,
     });
     if (!selectionCommand) {
-      await safeDiscordInteractionCall("model picker update", () =>
-        interaction.update(
+      await safeDiscordInteractionCall("model picker reply", () =>
+        interaction.reply(
           buildDiscordModelPickerNoticePayload("Sorry, /model is unavailable right now."),
         ),
       );
       return;
     }
 
-    const updateResult = await safeDiscordInteractionCall("model picker update", () =>
-      interaction.update(
+    const updateResult = await safeDiscordInteractionCall("model picker reply", () =>
+      interaction.reply(
         buildDiscordModelPickerNoticePayload(`Applying model change to ${resolvedModelRef}...`),
       ),
     );
@@ -932,8 +939,8 @@ async function handleDiscordModelPickerInteraction(
 
   if (parsed.action === "cancel") {
     const displayModel = currentModelRef ?? "default";
-    await safeDiscordInteractionCall("model picker update", () =>
-      interaction.update(buildDiscordModelPickerNoticePayload(`ℹ️ Model kept as ${displayModel}.`)),
+    await safeDiscordInteractionCall("model picker reply", () =>
+      interaction.reply(buildDiscordModelPickerNoticePayload(`ℹ️ Model kept as ${displayModel}.`)),
     );
     return;
   }
