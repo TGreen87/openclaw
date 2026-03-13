@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { withEnvAsync } from "../../test-utils/env.js";
-import { extractConfigSummary, resolveAuthForTarget } from "./helpers.js";
+import { extractConfigSummary, resolveAuthForTarget, resolveProbeBudgetMs } from "./helpers.js";
 
 describe("extractConfigSummary", () => {
   it("marks SecretRef-backed gateway auth credentials as configured", () => {
@@ -63,6 +63,41 @@ describe("extractConfigSummary", () => {
     expect(summary.gateway.authPasswordConfigured).toBe(false);
     expect(summary.gateway.remoteTokenConfigured).toBe(false);
     expect(summary.gateway.remotePasswordConfigured).toBe(false);
+  });
+});
+
+describe("resolveProbeBudgetMs", () => {
+  it("honors the full caller timeout for local loopback probes", () => {
+    expect(
+      resolveProbeBudgetMs(3000, {
+        kind: "localLoopback",
+        url: "ws://127.0.0.1:18789",
+      }),
+    ).toBe(3000);
+  });
+
+  it("treats explicit loopback URLs like local probes", () => {
+    expect(
+      resolveProbeBudgetMs(3000, {
+        kind: "explicit",
+        url: "ws://localhost:18789",
+      }),
+    ).toBe(3000);
+  });
+
+  it("keeps tighter budgets for remote and ssh probes", () => {
+    expect(
+      resolveProbeBudgetMs(2500, {
+        kind: "configRemote",
+        url: "wss://remote.example:18789",
+      }),
+    ).toBe(1500);
+    expect(
+      resolveProbeBudgetMs(4000, {
+        kind: "sshTunnel",
+        url: "ws://127.0.0.1:49000",
+      }),
+    ).toBe(2000);
   });
 });
 
@@ -200,6 +235,8 @@ describe("resolveAuthForTarget", () => {
     await withEnvAsync(
       {
         MISSING_GATEWAY_TOKEN: undefined,
+        OPENCLAW_GATEWAY_TOKEN: undefined,
+        OPENCLAW_GATEWAY_PASSWORD: undefined,
       },
       async () => {
         const auth = await resolveAuthForTarget(

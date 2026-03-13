@@ -91,6 +91,16 @@ function normalizeWsUrl(value: string): string | null {
   return trimmed;
 }
 
+function isLoopbackProbeUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    return host === "127.0.0.1" || host === "localhost" || host === "::1" || host === "[::1]";
+  } catch {
+    return false;
+  }
+}
+
 export function resolveTargets(cfg: OpenClawConfig, explicitUrl?: string): GatewayStatusTarget[] {
   const targets: GatewayStatusTarget[] = [];
   const add = (t: GatewayStatusTarget) => {
@@ -126,12 +136,22 @@ export function resolveTargets(cfg: OpenClawConfig, explicitUrl?: string): Gatew
   return targets;
 }
 
-export function resolveProbeBudgetMs(overallMs: number, kind: TargetKind): number {
-  if (kind === "localLoopback") {
-    return Math.min(800, overallMs);
-  }
+export function resolveProbeBudgetMs(
+  overallMs: number,
+  target: TargetKind | Pick<GatewayStatusTarget, "kind" | "url">,
+): number {
+  const kind = typeof target === "string" ? target : target.kind;
+  const url = typeof target === "string" ? undefined : target.url;
+
+  // `probeGateway()` does more than a bare socket connect: after hello it also
+  // requests health, status, system-presence, and config.get. Loopback probes
+  // should honor the full caller budget so healthy local gateways do not time
+  // out prematurely. Keep the existing tighter caps for remote/SSH probes.
   if (kind === "sshTunnel") {
     return Math.min(2000, overallMs);
+  }
+  if (kind === "localLoopback" || (url && isLoopbackProbeUrl(url))) {
+    return overallMs;
   }
   return Math.min(1500, overallMs);
 }
